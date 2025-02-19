@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 
 def planet2D(x_0, y_0, vx_0, vy_0, Mc, m, dt, N):
     G = 6.67430e-11
@@ -21,18 +22,34 @@ def planet2D(x_0, y_0, vx_0, vy_0, Mc, m, dt, N):
     
     return r, t
 
-x_0, y_0 = 1.5e11, 0
-vx_0, vy_0 = 0, 29780
-Mc, m = 1.989e30, 5.972e24
-dt, N = 60*60, 9000
+x_0, y_0 = 1.0e15, 0
+vx_0, vy_0 = 0, 2e7
+Mc, m = 9.945e39, 1.989e39
+dt, N = 60*60*24, 1700
 
 r, t = planet2D(x_0, y_0, vx_0, vy_0, Mc, m, dt, N)
 
-plt.figure(figsize=(8, 8))
-plt.plot(r[:, 0], r[:, 1], color = '#0000FF', label = 'Planet')
-plt.scatter(0, 0, color='#000000', label = 'Sun', s = 100)
-plt.xlabel('X (m)')
-plt.ylabel('Y (m)')
-plt.legend()
-plt.grid()
+fig, ax = plt.subplots(figsize=(8, 8))
+ax.set_xlim(np.min(r[:, 0]) * 1.1, np.max(r[:, 0]) * 1.1)
+ax.set_ylim(np.min(r[:, 1]) * 1.1, np.max(r[:, 1]) * 1.1)
+ax.set_xlabel('X (m)')
+ax.set_ylabel('Y (m)')
+ax.grid()
+ax.scatter(0, 0, color='#000000', label='Black Hole 1', s=100)
+planet, = ax.plot([], [], 'bo', markersize=5, color='#000000', label='Black Hole 2')
+trail, = ax.plot([], [], 'b-', lw=0.5)
+
+ax.legend()
+
+def init():
+    planet.set_data([], [])
+    trail.set_data([], [])
+    return planet, trail
+
+def update(frame):
+    planet.set_data([r[frame, 0]], [r[frame, 1]])
+    trail.set_data(r[:frame+1, 0], r[:frame+1, 1])
+    return planet, trail
+
+ani = animation.FuncAnimation(fig, update, frames=N, init_func=init, blit=True, interval=1)
 plt.show()
