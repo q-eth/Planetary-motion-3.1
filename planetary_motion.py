@@ -2,58 +2,61 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
-def planet2D(x_0, y_0, vx_0, vy_0, Mc, m, dt, N, merge_distance):
+def planet2D(x_0, y_0, vx_0, vy_0, Mc, m, dt, N):
     G = 6.67430e-11
-    M = Mc
+
+    x = np.zeros(N)
+    y = np.zeros(N)
+    t = np.zeros(N)
+
+    x[0], y[0] = x_0, y_0
+    vx, vy = vx_0, vy_0
+
+    r = np.sqrt(x[0]**2 + y[0]**2)
+    ax = -G * Mc * x[0] / r**3
+    ay = -G * Mc * y[0] / r**3
     
-    r = np.zeros((N+1, 2))
-    v = np.zeros((N+1, 2))
-    t = np.linspace(0, (N+1)*dt, N+1)
-
-    r[0] = np.array([x_0, y_0])
-    v[0] = np.array([vx_0, vy_0])
-
-    r[1] = r[0] + v[0] * dt 
-
-    for i in range(1, N):
-        r_norm = np.linalg.norm(r[i])
-        if r_norm < merge_distance:
-            r = r[:i+1]
-            break
-        a = -G * M * r[i] / r_norm**3
-        r[i+1] = 2 * r[i] - r[i-1] + a * dt**2
+    x[1] = x[0] + vx * dt + 0.5 * ax * dt**2
+    y[1] = y[0] + vy * dt + 0.5 * ay * dt**2
     
-    return r, t[:len(r)]
+    for i in range(1, N - 1):
+        r = np.sqrt(x[i]**2 + y[i]**2)
+        ax = -G * Mc * x[i] / r**3
+        ay = -G * Mc * y[i] / r**3
+        
+        x[i+1] = 2*x[i] - x[i-1] + ax * dt**2
+        y[i+1] = 2*y[i] - y[i-1] + ay * dt**2
+        
+        t[i] = i * dt
+    
+    t[-1] = (N-1) * dt
 
-x_0, y_0 = 1.0e15, 0
-vx_0, vy_0 = 0, 1e7
-Mc, m = 9.945e39, 1.989e39
-dt, N = 60*60*24, 1000
-merge_distance = 3.8e13
+    fig, ax = plt.subplots(figsize=(10, 10))
 
-r, t = planet2D(x_0, y_0, vx_0, vy_0, Mc, m, dt, N, merge_distance)
+    max_range = 1.5 * max(abs(x_0), abs(y_0), 1e10)
+    ax.set_xlim(-max_range, max_range)
+    ax.set_ylim(-max_range, max_range)
+    
+    ax.plot(0, 0, 'yo', markersize=10, label='Sun')
+    line, = ax.plot([], [], color='gray', label='Planet Trajectory')
+    point, = ax.plot([], [], 'bo', markersize=5, label='Planet', markerfacecolor='#000080')
+    
+    def update(frame):
+        if frame >= len(x):
+            return line, point
+        line.set_data(x[:frame+1], y[:frame+1])
+        point.set_data([x[frame]], [y[frame]])
+        return line, point
+    
+    ani = animation.FuncAnimation(fig, update, frames=N, interval=2, blit=True)
+    ax.legend()
+    plt.show()
+    
+    return x, y, t
 
-fig, ax = plt.subplots(figsize=(8, 8))
-ax.set_xlim(-2e15, 2e15)
-ax.set_ylim(-2e15, 2e15)
-ax.set_xlabel('X (m)')
-ax.set_ylabel('Y (m)')
-ax.grid()
-ax.scatter(0, 0, color='#000000', label='Black Hole 1', s=100)
-planet, = ax.plot([], [], 'bo', markersize=5, color='#000000', label='Black Hole 2')
-trail, = ax.plot([], [], 'b-', lw=0.5)
-
-ax.legend()
-
-def init():
-    planet.set_data([], [])
-    trail.set_data([], [])
-    return planet, trail
-
-def update(frame):
-    planet.set_data([r[frame, 0]], [r[frame, 1]])
-    trail.set_data(r[:frame+1, 0], r[:frame+1, 1])
-    return planet, trail
-
-ani = animation.FuncAnimation(fig, update, frames=len(r), init_func=init, blit=True, interval=1)
-plt.show()
+x0, y0 = 1.0e15, 0
+v0x, v0y = 0, 2e7
+Mc, m = 1e40, 2e39
+dt = 60*60*24
+N = 3000
+x, y, t = planet2D(x0, y0, v0x, v0y, Mc, m, dt, N)
